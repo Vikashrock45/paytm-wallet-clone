@@ -2,7 +2,7 @@ const express = require('express')
 const jwt = require('jsonwebtoken')
 const { Account, User } = require('../db')
 const { authMiddleware } = require('../middleware')
-const { JWT_TOKEN } = require('../config')
+
 const { default: mongoose } = require('mongoose')
 const router = express.Router()
 
@@ -10,10 +10,9 @@ router.get('/balance', authMiddleware, async (req, res) => {
 
     const authorization = req.headers.authorization
     const token = authorization.split(' ')[1]
-    const { userId } = jwt.verify(token, JWT_TOKEN)
 
     const account = await Account.findOne({
-        userId: userId
+        userId: req.userId
     })
     res.json({
         balance: account.balance
@@ -26,11 +25,10 @@ router.post('/transfer', authMiddleware, async (req, res) => {
 
     const authorization = req.headers.authorization
     const token = authorization.split(' ')[1]
-    const { userId } = jwt.verify(token, JWT_TOKEN)
     
     const { amount, to } = req.body
     
-    const account = await Account.findOne({ userId: userId }).session(session)
+    const account = await Account.findOne({ userId: req.userId }).session(session)
     
     if(account.balance < amount) {
         await session.abortTransaction()
@@ -49,7 +47,7 @@ router.post('/transfer', authMiddleware, async (req, res) => {
     }
 
     await Account.updateOne(
-        { userId: userId },
+        { userId: req.userId },
         { $inc: { balance: -amount } }
     ).session(session)
 

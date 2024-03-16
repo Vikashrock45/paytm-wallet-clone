@@ -13,9 +13,11 @@ const signInUser = zod.object({
 })
 
 const updatePassword = zod.string().min(6)
+const updateName = zod.string().min(1)
 
 module.exports = {
     createUser,
     signInUser,
-    updatePassword
+    updatePassword,
+    updateName
 }

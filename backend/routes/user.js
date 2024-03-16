@@ -1,7 +1,7 @@
 const express = require('express')
 
 const jwt = require('jsonwebtoken')
-const { createUser, signInUser, updatePassword } = require('../types')
+const { createUser, signInUser, updatePassword, updateName } = require('../types')
 const { User, Account } = require('../db')
 const { JWT_TOKEN } = require('../config')
 const { authMiddleware } = require('../middleware')
@@ -10,6 +10,7 @@ const router = express.Router()
 router.post('/signup', async (req, res) => {
     const createNewUser = req.body
     const response = createUser.safeParse(createNewUser)
+
     if(!response.success) {
         res.status(411).json({
             message: "Email already taken / Incorrect inputs"
@@ -33,13 +34,13 @@ router.post('/signup', async (req, res) => {
         // Creating a new account and giving a random money to the account at the time of signup.
         await Account.create({
             userId,
-            balance: 10000
+            balance: 1 + Math.random() * 10000
         })
 
-        // let token = jwt.sign({ userId: userId }, JWT_TOKEN)
+        let token = jwt.sign({ userId: userId }, JWT_TOKEN)
         res.status(200).json({
-            message: "User created successfully"
-            // token: token
+            message: "User created successfully",
+            token: token
         })
     }
 })
@@ -57,19 +58,12 @@ router.post('/signin', async (req, res) => {
         });
     
         if(user) {
-            if(!user.token) {
-                const token = jwt.sign({userId: user._id}, JWT_TOKEN)
-                await User.findOneAndUpdate(
-                    { username: req.body.username },
-                    { token: token }
-                )
-                res.status(200).json({
-                    token: token
-                })
-                return
-            }
-            res.status(200).json({
-                token: user.token
+            const token = jwt.sign({
+                userId: user._id
+            }, JWT_SECRET);
+      
+            res.json({
+                token: token
             })
             return
         }
@@ -87,49 +81,43 @@ router.put('/', authMiddleware, async (req, res) => {
     const authorization = req.headers.authorization
     const token = authorization.split(' ')[1]
     try {
-        const { userId } = jwt.verify(token, JWT_TOKEN)
-        const user = await User.findOne({_id: userId})
-       
-        if(user) {
-            if(newPassword) {
-                const passResponse = updatePassword.safeParse(newPassword)
-                if(passResponse.success) {
-                    await User.findOneAndUpdate(
-                        { _id: userId },
-                        { password: passResponse.data }
-                    )
-                } else {
-                    res.status(411).json({
-                        message: "Error while updating information"
-                    })
-                    return
-                }
-            }
-            if(newFirstName) {
+        if(newPassword) {
+            const passResponse = updatePassword.safeParse(newPassword)
+            if(passResponse.success) {
                 await User.findOneAndUpdate(
-                    { _id: userId },
-                    { firstName: newFirstName }
+                    { _id: req.userId },
+                    { password: passResponse.data }
                 )
+            } else {
+                res.status(411).json({
+                    message: "Error while updating information"
+                })
+                return
             }
-            if(newLastName) {
-                await User.findOneAndUpdate(
-                    { _id: userId },
-                    { lastName: newLastName }
-                )
-            }
-            res.status(200).json({
-                message: "Updated successfully"
-            })
         }
+        if(updateName.safeParse(newFirstName).success) {
+            await User.findOneAndUpdate(
+                { _id: req.userId },
+                { firstName: newFirstName }
+            )
+        }
+        if(updateName.safeParse(newLastName).success) {
+            await User.findOneAndUpdate(
+                { _id: req.userId },
+                { lastName: newLastName }
+            )
+        }
+        res.status(200).json({
+            message: "Updated successfully"
+        })
     } catch(err) {
-        console.log(err)
         res.status(411).json({
             message: "Error while updating information"
         })
     }
 })
 
-router.get('/bulk', async (req, res) => {
+router.get('/bulk', authMiddleware, async (req, res) => {
     const filter = req.query.filter || ""
 
     const users = await User.find({
