@@ -15,7 +15,7 @@ export default function Users() {
         async function fetchUsers() {
             try {
                 const token = localStorage.getItem("token");
-                const response = await axios.get(`http://localhost:3000/api/v1/user/bulk?filter=${filter}`, {
+                const response = await axios.get(`https://paytm-wallet-clone-app.onrender.com/api/v1/user/bulk?filter=${filter}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'

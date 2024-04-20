@@ -40,7 +40,7 @@ export default function Send() {
                     <button onClick={async () => {
                         try {
                         const token = localStorage.getItem("token");
-                        await axios.post('http://localhost:3000/api/v1/account/transfer', 
+                        await axios.post('https://paytm-wallet-clone-app.onrender.com/api/v1/account/transfer', 
                         {
                             amount: amountRef.current.value,
                             to: toUserId
